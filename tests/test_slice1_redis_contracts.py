@@ -83,96 +83,85 @@ class TestDomainModels:
 # ---------------------------------------------------------------------------
 
 class TestRedisRepository:
-    @pytest.mark.asyncio
-    async def test_store_and_get_signal(self, repo):
+    def test_store_and_get_signal(self, repo):
         rec = make_signal_record()
-        await repo.store_signal(rec)
-        fetched = await repo.get_signal("test-source", "test-key-1")
+        repo.store_signal(rec)
+        fetched = repo.get_signal("test-source", "test-key-1")
         assert fetched is not None
         assert fetched.signal_cache_id == rec.signal_cache_id
 
-    @pytest.mark.asyncio
-    async def test_signal_ttl(self, repo, fake_redis):
+    def test_signal_ttl(self, repo, fake_redis):
         rec = make_signal_record()
-        await repo.store_signal(rec)
-        ttl = await fake_redis.ttl(keys.signal_key("test-source", "test-key-1"))
+        repo.store_signal(rec)
+        ttl = fake_redis.ttl(keys.signal_key("test-source", "test-key-1"))
         assert ttl > 0
 
-    @pytest.mark.asyncio
-    async def test_idempotency_set_and_check(self, repo, fake_redis):
+    def test_idempotency_set_and_check(self, repo, fake_redis):
         idem = IdempotencyRecord(
             idempotency_key="k1",
             source="src",
             signal_cache_id="signal:src:k1",
             status=SignalStatus.accepted,
         )
-        await repo.set_idempotency(idem)
-        found = await repo.check_idempotency("src", "k1")
+        repo.set_idempotency(idem)
+        found = repo.check_idempotency("src", "k1")
         assert found is not None
         assert found.signal_cache_id == "signal:src:k1"
         # TTL should be set
-        ttl = await fake_redis.ttl(keys.idempotency_key("src", "k1"))
+        ttl = fake_redis.ttl(keys.idempotency_key("src", "k1"))
         assert ttl > 0
 
-    @pytest.mark.asyncio
-    async def test_idempotency_miss(self, repo):
-        assert await repo.check_idempotency("no", "no") is None
+    def test_idempotency_miss(self, repo):
+        assert repo.check_idempotency("no", "no") is None
 
-    @pytest.mark.asyncio
-    async def test_watchlist_upsert_creates_entry(self, repo):
+    def test_watchlist_upsert_creates_entry(self, repo):
         entry = make_watchlist_entry()
-        await repo.upsert_watchlist_entry(entry)
-        fetched = await repo.get_watchlist_entry("test-source", "watchlist_candidate", "AAPL")
+        repo.upsert_watchlist_entry(entry)
+        fetched = repo.get_watchlist_entry("test-source", "watchlist_candidate", "AAPL")
         assert fetched is not None
         assert fetched.status == WatchlistStatus.active
 
-    @pytest.mark.asyncio
-    async def test_watchlist_upsert_is_idempotent(self, repo):
+    def test_watchlist_upsert_is_idempotent(self, repo):
         entry = make_watchlist_entry(score=0.5)
-        await repo.upsert_watchlist_entry(entry)
+        repo.upsert_watchlist_entry(entry)
         entry.score = 0.9
-        await repo.upsert_watchlist_entry(entry)
-        fetched = await repo.get_watchlist_entry("test-source", "watchlist_candidate", "AAPL")
+        repo.upsert_watchlist_entry(entry)
+        fetched = repo.get_watchlist_entry("test-source", "watchlist_candidate", "AAPL")
         assert fetched is not None
         assert fetched.score == 0.9
 
-    @pytest.mark.asyncio
-    async def test_watchlist_uniqueness_by_source_type_ticker(self, repo):
+    def test_watchlist_uniqueness_by_source_type_ticker(self, repo):
         e1 = make_watchlist_entry(source="a", signal_type="wc",
                                   watchlist_entry_id="watchlist:a:wc:AAPL")
         e2 = make_watchlist_entry(source="b", signal_type="wc",
                                   watchlist_entry_id="watchlist:b:wc:AAPL")
-        await repo.upsert_watchlist_entry(e1)
-        await repo.upsert_watchlist_entry(e2)
-        assert await repo.get_watchlist_entry("a", "wc", "AAPL") is not None
-        assert await repo.get_watchlist_entry("b", "wc", "AAPL") is not None
+        repo.upsert_watchlist_entry(e1)
+        repo.upsert_watchlist_entry(e2)
+        assert repo.get_watchlist_entry("a", "wc", "AAPL") is not None
+        assert repo.get_watchlist_entry("b", "wc", "AAPL") is not None
 
-    @pytest.mark.asyncio
-    async def test_active_index_updated(self, repo, fake_redis):
+    def test_active_index_updated(self, repo, fake_redis):
         entry = make_watchlist_entry()
-        await repo.upsert_watchlist_entry(entry)
-        members = await fake_redis.smembers(keys.ACTIVE_WATCHLIST_INDEX)
+        repo.upsert_watchlist_entry(entry)
+        members = fake_redis.smembers(keys.ACTIVE_WATCHLIST_INDEX)
         assert entry.watchlist_entry_id in members
 
-    @pytest.mark.asyncio
-    async def test_get_or_create_source(self, repo):
-        s = await repo.get_or_create_source("my-strategy")
+    def test_get_or_create_source(self, repo):
+        s = repo.get_or_create_source("my-strategy")
         assert s.name == "my-strategy"
         # Second call returns existing
-        s2 = await repo.get_or_create_source("my-strategy")
+        s2 = repo.get_or_create_source("my-strategy")
         assert s2.name == "my-strategy"
 
-    @pytest.mark.asyncio
-    async def test_counters(self, repo):
+    def test_counters(self, repo):
         rec = make_signal_record()
-        await repo.store_signal(rec)
-        counters = await repo.get_counters()
+        repo.store_signal(rec)
+        counters = repo.get_counters()
         assert counters["accepted"] == 1
 
-    @pytest.mark.asyncio
-    async def test_recent_signals_index(self, repo):
+    def test_recent_signals_index(self, repo):
         rec = make_signal_record()
-        await repo.store_signal(rec)
-        recent = await repo.get_recent_signals(limit=10)
+        repo.store_signal(rec)
+        recent = repo.get_recent_signals(limit=10)
         assert len(recent) == 1
         assert recent[0].signal_cache_id == rec.signal_cache_id

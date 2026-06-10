@@ -30,55 +30,50 @@ def _submission(**overrides) -> SignalSubmission:
 
 
 class TestSymbolResolution:
-    @pytest.mark.asyncio
-    async def test_resolved_ticker(self, repo: SignalCacheRepository):
+    def test_resolved_ticker(self, repo: SignalCacheRepository):
         backend = _StubBackend()
         backend.seed("AAPL", ResolvedSymbol(symbol_id=1, canonical_ticker="AAPL"))
         SymbolResolver.set_backend(backend)
 
-        signal, wl = await ingest_signal(_submission(), repo)
+        signal, wl = ingest_signal(_submission(), repo)
         assert signal.status == SignalStatus.accepted
         assert signal.symbol_id == 1
         assert signal.canonical_ticker == "AAPL"
         assert wl is not None
         assert wl.symbol_id == 1
 
-    @pytest.mark.asyncio
-    async def test_unresolved_ticker(self, repo: SignalCacheRepository):
-        signal, wl = await ingest_signal(_submission(ticker="ZZZZ", idempotency_key="k-z"), repo)
+    def test_unresolved_ticker(self, repo: SignalCacheRepository):
+        signal, wl = ingest_signal(_submission(ticker="ZZZZ", idempotency_key="k-z"), repo)
         assert signal.status == SignalStatus.unresolved
         assert signal.rejection_reason is not None
         assert wl is not None
         assert wl.symbol_id is None
 
-    @pytest.mark.asyncio
-    async def test_inactive_ticker(self, repo: SignalCacheRepository):
+    def test_inactive_ticker(self, repo: SignalCacheRepository):
         backend = _StubBackend()
         backend.seed("OLD", ResolvedSymbol(symbol_id=99, canonical_ticker="OLD", active=False))
         SymbolResolver.set_backend(backend)
 
-        signal, wl = await ingest_signal(_submission(ticker="OLD", idempotency_key="k-old"), repo)
+        signal, wl = ingest_signal(_submission(ticker="OLD", idempotency_key="k-old"), repo)
         # Inactive tickers still resolve – operator can see the active flag
         assert signal.status == SignalStatus.accepted
         assert signal.symbol_id == 99
 
-    @pytest.mark.asyncio
-    async def test_duplicate_prevention(self, repo: SignalCacheRepository):
+    def test_duplicate_prevention(self, repo: SignalCacheRepository):
         backend = _StubBackend()
         backend.seed("AAPL", ResolvedSymbol(symbol_id=1, canonical_ticker="AAPL"))
         SymbolResolver.set_backend(backend)
 
-        await ingest_signal(_submission(), repo)
-        signal2, wl2 = await ingest_signal(_submission(), repo)
+        ingest_signal(_submission(), repo)
+        signal2, wl2 = ingest_signal(_submission(), repo)
         assert signal2.status == SignalStatus.duplicate
         assert wl2 is None
 
-    @pytest.mark.asyncio
-    async def test_resolver_failure_handled(self, repo: SignalCacheRepository):
+    def test_resolver_failure_handled(self, repo: SignalCacheRepository):
         class _FailBackend:
-            async def resolve(self, ticker, market, locale):
+            def resolve(self, ticker, market, locale):
                 raise RuntimeError("db down")
 
         SymbolResolver.set_backend(_FailBackend())
-        signal, wl = await ingest_signal(_submission(idempotency_key="k-fail"), repo)
+        signal, wl = ingest_signal(_submission(idempotency_key="k-fail"), repo)
         assert signal.status == SignalStatus.unresolved

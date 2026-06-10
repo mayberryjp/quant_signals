@@ -1,25 +1,13 @@
 services:
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  app:
-    build: .
-    ports:
-      - "8000:8000"
+  quant_signals:
+    container_name: quant_signals
+    image: mayberry4477/quant_signals:latest
+    stdin_open: true
+    tty: true
     environment:
-      QUANT_REDIS_URL: redis://redis:6379/0
-    depends_on:
-      redis:
-        condition: service_healthy
-
-volumes:
-  redis_data:
+      - DATABASE_URL=postgresql+psycopg://quant:quant_dev_password@postgres:5432/quant
+      - QUANT_REDIS_URL=redis://quant_redis.quant.mayberry.farm:6379/0
+      - API_PORT=8016
+      - MAINTENANCE_INTERVAL=60
+    ports:
+      - "8016:8016"

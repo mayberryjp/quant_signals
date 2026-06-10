@@ -2,41 +2,37 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from bottle import Bottle
 
 from app.dependencies import get_repo
-from app.models.responses import CacheStatsResponse, HealthResponse, ReadinessResponse
-from app.redis.repository import SignalCacheRepository
 
-router = APIRouter(tags=["health"])
+sub = Bottle()
 
 
-@router.get("/signal-cache/health", response_model=HealthResponse)
-async def health():
-    return HealthResponse(status="ok")
+@sub.get('/signal-cache/health')
+def health():
+    return {"status": "ok"}
 
 
-@router.get("/signal-cache/ready", response_model=ReadinessResponse)
-async def readiness(repo: SignalCacheRepository = Depends(get_repo)):
+@sub.get('/signal-cache/ready')
+def readiness():
+    repo = get_repo()
     try:
-        redis_ok = await repo.r.ping()
+        redis_ok = repo.r.ping()
     except Exception:
         redis_ok = False
-    heartbeat = await repo.get_heartbeat() if redis_ok else None
-    return ReadinessResponse(
-        status="ready" if redis_ok else "not_ready",
-        redis="ok" if redis_ok else "unavailable",
-        maintenance_heartbeat=heartbeat,
-    )
+    heartbeat = repo.get_heartbeat() if redis_ok else None
+    return {
+        "status": "ready" if redis_ok else "not_ready",
+        "redis": "ok" if redis_ok else "unavailable",
+        "maintenance_heartbeat": heartbeat,
+    }
 
 
-@router.get("/signal-cache/stats", response_model=CacheStatsResponse)
-async def cache_stats(repo: SignalCacheRepository = Depends(get_repo)):
-    counters = await repo.get_counters()
-    active = await repo.get_active_watchlist_count()
-    last_maint = await repo.get_last_cleanup()
-    return CacheStatsResponse(
-        **counters,
-        active_watchlist=active,
-        last_maintenance=last_maint,
-    )
+@sub.get('/signal-cache/stats')
+def cache_stats():
+    repo = get_repo()
+    counters = repo.get_counters()
+    active = repo.get_active_watchlist_count()
+    last_maint = repo.get_last_cleanup()
+    return {**counters, "active_watchlist": active, "last_maintenance": last_maint}

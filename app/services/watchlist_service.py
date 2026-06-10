@@ -11,19 +11,19 @@ from app.redis.repository import SignalCacheRepository
 from app.services.symbol_resolver import SymbolResolver
 
 
-async def manual_add(
+def manual_add(
     body: ManualWatchlistAdd,
     repo: SignalCacheRepository,
 ) -> WatchlistEntry:
     now = datetime.now(timezone.utc)
     signal_type = "manual"
 
-    resolved = await SymbolResolver.resolve(body.ticker, body.market, body.locale)
+    resolved = SymbolResolver.resolve(body.ticker, body.market, body.locale)
     symbol_id = resolved.symbol_id if resolved else None
     canonical_ticker = resolved.canonical_ticker if resolved else None
 
     weid = keys.watchlist_entry_id(body.source, signal_type, body.ticker)
-    existing = await repo.get_watchlist_entry_by_id(weid)
+    existing = repo.get_watchlist_entry_by_id(weid)
 
     entry = WatchlistEntry(
         watchlist_entry_id=weid,
@@ -42,5 +42,5 @@ async def manual_add(
         updated_at=now,
         created_by=body.source,
     )
-    await repo.upsert_watchlist_entry(entry)
+    repo.upsert_watchlist_entry(entry)
     return entry

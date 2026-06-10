@@ -26,7 +26,7 @@ class ResolvedSymbol:
 
 
 class SymbolBackend(Protocol):
-    async def resolve(self, ticker: str, market: str, locale: str) -> ResolvedSymbol | None: ...
+    def resolve(self, ticker: str, market: str, locale: str) -> ResolvedSymbol | None: ...
 
 
 class _StubBackend:
@@ -38,7 +38,7 @@ class _StubBackend:
     def seed(self, ticker: str, symbol: ResolvedSymbol) -> None:
         self._data[ticker.upper()] = symbol
 
-    async def resolve(self, ticker: str, market: str, locale: str) -> ResolvedSymbol | None:
+    def resolve(self, ticker: str, market: str, locale: str) -> ResolvedSymbol | None:
         return self._data.get(ticker.upper())
 
 
@@ -57,8 +57,8 @@ class SymbolResolver:
         return _backend
 
     @staticmethod
-    async def resolve(ticker: str, market: str = "stocks", locale: str = "us") -> ResolvedSymbol | None:
+    def resolve(ticker: str, market: str = "stocks", locale: str = "us") -> ResolvedSymbol | None:
         try:
-            return await _backend.resolve(ticker, market, locale)
+            return _backend.resolve(ticker, market, locale)
         except Exception:
             return None

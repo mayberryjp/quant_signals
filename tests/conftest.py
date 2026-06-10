@@ -2,53 +2,37 @@
 
 from __future__ import annotations
 
-import asyncio
-from typing import AsyncGenerator
-
-import fakeredis.aioredis
+import fakeredis
 import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
+from webtest import TestApp
 
 from app.models.domain import SignalCacheRecord, SignalStatus, WatchlistEntry, WatchlistStatus
-from app.redis import keys
+from app.redis import client as redis_client
 from app.redis.repository import SignalCacheRepository
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest_asyncio.fixture
-async def fake_redis():
+@pytest.fixture
+def fake_redis():
     """Provide a fresh fakeredis instance per test."""
-    r = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    r = fakeredis.FakeRedis(decode_responses=True)
     yield r
-    await r.aclose()
+    r.close()
 
 
-@pytest_asyncio.fixture
-async def repo(fake_redis) -> SignalCacheRepository:
+@pytest.fixture
+def repo(fake_redis) -> SignalCacheRepository:
     return SignalCacheRepository(fake_redis)
 
 
-@pytest_asyncio.fixture
-async def app_client(fake_redis) -> AsyncGenerator[AsyncClient, None]:
+@pytest.fixture
+def app_client(fake_redis) -> TestApp:
     """HTTP test client with Redis dependency overridden."""
+    original = redis_client._pool
+    redis_client._pool = fake_redis
     from app.main import app
-    from app.dependencies import get_repo
-
-    async def _override_repo():
-        return SignalCacheRepository(fake_redis)
-
-    app.dependency_overrides[get_repo] = _override_repo
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        yield client
-    app.dependency_overrides.clear()
+    test_app = TestApp(app)
+    yield test_app
+    redis_client._pool = original
 
 
 # ---------------------------------------------------------------------------

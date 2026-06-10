@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import os
 from datetime import datetime, timezone
 
 from app.models.domain import (
@@ -17,8 +19,10 @@ from app.redis import keys
 from app.redis.repository import SignalCacheRepository
 from app.services.symbol_resolver import SymbolResolver
 
+log = logging.getLogger("quant_signals.signal_service")
 
-async def ingest_signal(
+
+def ingest_signal(
     submission: SignalSubmission,
     repo: SignalCacheRepository,
 ) -> tuple[SignalCacheRecord, WatchlistEntry | None]:
@@ -26,9 +30,9 @@ async def ingest_signal(
     now = datetime.now(timezone.utc)
 
     # 1. Idempotency check
-    existing = await repo.check_idempotency(submission.source, submission.idempotency_key)
+    existing = repo.check_idempotency(submission.source, submission.idempotency_key)
     if existing is not None:
-        rec = await repo.get_signal_by_id(existing.signal_cache_id)
+        rec = repo.get_signal_by_id(existing.signal_cache_id)
         if rec is not None:
             rec.status = SignalStatus.duplicate
             return rec, None
@@ -44,13 +48,13 @@ async def ingest_signal(
         return dup, None
 
     # 2. Ensure source exists
-    await repo.get_or_create_source(submission.source)
+    repo.get_or_create_source(submission.source)
 
     # 3. Build signal cache id
     scid = keys.signal_cache_id(submission.source, submission.idempotency_key)
 
     # 4. Resolve symbol
-    resolved = await SymbolResolver.resolve(submission.ticker, submission.market, submission.locale)
+    resolved = SymbolResolver.resolve(submission.ticker, submission.market, submission.locale)
     symbol_id = resolved.symbol_id if resolved else None
     canonical_ticker = resolved.canonical_ticker if resolved else None
     status = SignalStatus.accepted if resolved else SignalStatus.unresolved
@@ -82,7 +86,7 @@ async def ingest_signal(
     )
 
     # 6. Persist signal
-    await repo.store_signal(signal)
+    repo.store_signal(signal)
 
     # 7. Idempotency record
     idem = IdempotencyRecord(
@@ -92,11 +96,11 @@ async def ingest_signal(
         status=status,
         received_at=now,
     )
-    await repo.set_idempotency(idem)
+    repo.set_idempotency(idem)
 
     # 8. Upsert watchlist entry (even for unresolved – operator can see it)
     weid = keys.watchlist_entry_id(submission.source, submission.signal_type, submission.ticker)
-    existing_entry = await repo.get_watchlist_entry_by_id(weid)
+    existing_entry = repo.get_watchlist_entry_by_id(weid)
 
     watchlist_entry = WatchlistEntry(
         watchlist_entry_id=weid,
@@ -120,8 +124,17 @@ async def ingest_signal(
         updated_at=now,
         created_by=submission.source,
     )
-    await repo.upsert_watchlist_entry(watchlist_entry)
+    repo.upsert_watchlist_entry(watchlist_entry)
 
     signal.watchlist_entry_id = weid
+
+    # 9. Archive to Postgres (best-effort, never blocks Redis flow)
+    if os.environ.get("DATABASE_URL"):
+        try:
+            from app.db import get_engine
+            from app.repository.signal_archive import archive_signal
+            archive_signal(get_engine(), signal)
+        except Exception:
+            log.exception("Postgres archive failed for %s – Redis write succeeded", scid)
 
     return signal, watchlist_entry
