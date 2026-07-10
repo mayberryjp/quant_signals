@@ -34,7 +34,7 @@ def archive_signal(engine: Engine, record: SignalCacheRecord) -> None:
             :submitted_ticker, :canonical_ticker, :symbol_id,
             :market, :locale, :signal_type,
             :direction, :score, :confidence, :horizon,
-            :reason, :tags::jsonb, :metadata::jsonb,
+            :reason, CAST(:tags AS jsonb), CAST(:metadata AS jsonb),
             :status, :rejection_reason,
             :received_at, :processed_at,
             :watchlist_entry_id, :schema_version
