@@ -84,3 +84,18 @@ class TestWatchlistRead:
         data = resp.json
         assert len(data["items"]) == 1
         assert data["total"] == 2
+
+    def test_list_default_returns_all_items(self, app_client):
+        # Create more than the historical max page size to verify full return.
+        for i in range(150):
+            app_client.post_json("/signals", {
+                **SIGNAL_BODY,
+                "source": f"momentum-v1-{i}",
+                "ticker": f"TK{i}",
+                "idempotency_key": f"m-v1:TK{i}",
+            })
+
+        resp = app_client.get("/watchlist")
+        data = resp.json
+        assert data["total"] == 150
+        assert len(data["items"]) == 150

@@ -168,9 +168,9 @@ class SignalCacheRepository:
         tag: str | None = None,
         signal_type: str | None = None,
         page: int = 1,
-        page_size: int = 25,
+        page_size: int | None = 25,
     ) -> tuple[list[WatchlistEntry], int]:
-        """Return paginated watchlist entries matching filters."""
+        """Return watchlist entries matching filters, optionally paginated."""
         # Start with active or all
         sets_to_intersect: list[str] = []
         if active_only:
@@ -203,8 +203,11 @@ class SignalCacheRepository:
 
         sorted_ids = sorted(ids)
         total = len(sorted_ids)
-        start = (page - 1) * page_size
-        page_ids = sorted_ids[start : start + page_size]
+        if page_size is None:
+            page_ids = sorted_ids
+        else:
+            start = (page - 1) * page_size
+            page_ids = sorted_ids[start : start + page_size]
 
         entries: list[WatchlistEntry] = []
         for eid in page_ids:

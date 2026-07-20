@@ -26,8 +26,14 @@ def list_watchlist():
     tag = request.params.get('tag')
     signal_type = request.params.get('signal_type')
     page = int(request.params.get('page', 1))
-    page_size = int(request.params.get('page_size', settings.default_page_size))
-    page_size = min(page_size, settings.max_page_size)
+    page_size_param = request.params.get('page_size')
+    # By default, return the full filtered result set.
+    if page_size_param is None:
+        page_size = None
+    else:
+        page_size_int = int(page_size_param)
+        # page_size=0 (or negative) is treated as "all".
+        page_size = None if page_size_int <= 0 else min(page_size_int, settings.max_page_size)
 
     repo = get_repo()
     entries, total = repo.list_watchlist(
@@ -45,7 +51,7 @@ def list_watchlist():
         items=[WatchlistEntryResponse(**e.model_dump()) for e in entries],
         total=total,
         page=page,
-        page_size=page_size,
+        page_size=total if page_size is None else page_size,
     )
     return resp.model_dump(mode="json")
 
