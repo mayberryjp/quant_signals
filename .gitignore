@@ -1,0 +1,61 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build / packaging artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+*.whl
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.pytype/
+.pyre/
+.ruff_cache/
+.cache/
+
+# Coverage outputs
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Notebook and temp files
+.ipynb_checkpoints/
+*.tmp
+*.temp
+
+# Local environment and secrets
+.env
+.env.*
+*.local
+.python-version
+
+# Logs and runtime files
+*.log
+*.pid
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE/editor artifacts
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
