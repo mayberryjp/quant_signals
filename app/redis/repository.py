@@ -95,6 +95,7 @@ class SignalCacheRepository:
     def upsert_watchlist_entry(self, entry: WatchlistEntry) -> None:
         key = keys.watchlist_key(entry.source, entry.signal_type, entry.submitted_ticker)
         self.r.set(key, entry.model_dump_json(), ex=settings.watchlist_entry_ttl)
+        self.r.incr(keys.counter_key("watchlist_upserts"))
         self._update_watchlist_indexes(entry)
 
     def get_watchlist_entry(self, source: str, signal_type: str, ticker: str) -> WatchlistEntry | None:
@@ -230,7 +231,15 @@ class SignalCacheRepository:
     # ------------------------------------------------------------------
 
     def get_counters(self) -> dict[str, int]:
-        names = ["accepted", "duplicate", "rejected", "unresolved", "failed", "expired"]
+        names = [
+            "accepted",
+            "duplicate",
+            "rejected",
+            "unresolved",
+            "failed",
+            "expired",
+            "watchlist_upserts",
+        ]
         result: dict[str, int] = {}
         for n in names:
             val = self.r.get(keys.counter_key(n))

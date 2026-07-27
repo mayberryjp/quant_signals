@@ -47,6 +47,7 @@ class TestKeyPatterns:
 
     def test_counter_key(self):
         assert keys.counter_key("accepted") == "qs:counter:accepted"
+        assert keys.counter_key("watchlist_upserts") == "qs:counter:watchlist_upserts"
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +130,8 @@ class TestRedisRepository:
         fetched = repo.get_watchlist_entry("test-source", "watchlist_candidate", "AAPL")
         assert fetched is not None
         assert fetched.score == 0.9
+        counters = repo.get_counters()
+        assert counters["watchlist_upserts"] == 2
 
     def test_watchlist_uniqueness_by_source_type_ticker(self, repo):
         e1 = make_watchlist_entry(source="a", signal_type="wc",

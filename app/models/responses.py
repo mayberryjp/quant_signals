@@ -86,5 +86,6 @@ class CacheStatsResponse(BaseModel):
     unresolved: int = 0
     failed: int = 0
     expired: int = 0
+    watchlist_upserts: int = 0
     active_watchlist: int = 0
     last_maintenance: str | None = None
