@@ -94,3 +94,34 @@ class TestSignalIntake:
     def test_get_signal_not_found(self, app_client):
         resp = app_client.get("/signals/signal:no:exist", expect_errors=True)
         assert resp.status_int == 404
+
+    def test_signal_intake_initializes_seen_metadata(self, app_client):
+        resp = app_client.post_json("/signals", VALID_SIGNAL)
+        scid = resp.json["signal_cache_id"]
+        weid = resp.json["watchlist_entry_id"]
+        # Fetch watchlist entry to verify seen metadata
+        wl_resp = app_client.get(f"/watchlist/{weid}")
+        assert wl_resp.status_int == 200
+        wl_data = wl_resp.json
+        assert wl_data["first_seen_signal_cache_id"] == scid
+        assert wl_data["last_seen_signal_cache_id"] == scid
+        assert wl_data["seen_count"] == 1
+
+    def test_signal_intake_increments_seen_count_on_update(self, app_client):
+        # First signal
+        resp1 = app_client.post_json("/signals", VALID_SIGNAL)
+        scid1 = resp1.json["signal_cache_id"]
+        weid = resp1.json["watchlist_entry_id"]
+
+        # Second signal, same symbol, different idempotency key
+        body2 = {**VALID_SIGNAL, "idempotency_key": "momentum-v1:2026-06-10:AAPL"}
+        resp2 = app_client.post_json("/signals", body2)
+        scid2 = resp2.json["signal_cache_id"]
+        assert resp2.json["watchlist_entry_id"] == weid
+
+        # Verify watchlist entry reflects seen count
+        wl_resp = app_client.get(f"/watchlist/{weid}")
+        wl_data = wl_resp.json
+        assert wl_data["first_seen_signal_cache_id"] == scid1
+        assert wl_data["last_seen_signal_cache_id"] == scid2
+        assert wl_data["seen_count"] == 2

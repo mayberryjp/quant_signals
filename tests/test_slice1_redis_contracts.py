@@ -77,6 +77,9 @@ class TestDomainModels:
         j = entry.model_dump_json()
         restored = WatchlistEntry.model_validate_json(j)
         assert restored.watchlist_entry_id == entry.watchlist_entry_id
+        assert restored.seen_count == 1
+        assert restored.first_seen_signal_cache_id == "signal:test-source:test-key-1"
+        assert restored.last_seen_signal_cache_id == "signal:test-source:test-key-1"
 
 
 # ---------------------------------------------------------------------------
@@ -132,6 +135,27 @@ class TestRedisRepository:
         assert fetched.score == 0.9
         counters = repo.get_counters()
         assert counters["watchlist_upserts"] == 2
+
+    def test_watchlist_seen_metadata_preserved_on_upsert(self, repo):
+        entry = make_watchlist_entry(
+            first_seen_signal_cache_id="signal:test-source:key-1",
+            last_seen_signal_cache_id="signal:test-source:key-1",
+            seen_count=1,
+        )
+        repo.upsert_watchlist_entry(entry)
+        fetched = repo.get_watchlist_entry("test-source", "watchlist_candidate", "AAPL")
+        assert fetched is not None
+        assert fetched.first_seen_signal_cache_id == "signal:test-source:key-1"
+        assert fetched.last_seen_signal_cache_id == "signal:test-source:key-1"
+        assert fetched.seen_count == 1
+        # Update with new signal
+        entry.last_seen_signal_cache_id = "signal:test-source:key-2"
+        entry.seen_count = 2
+        repo.upsert_watchlist_entry(entry)
+        fetched = repo.get_watchlist_entry("test-source", "watchlist_candidate", "AAPL")
+        assert fetched.first_seen_signal_cache_id == "signal:test-source:key-1"
+        assert fetched.last_seen_signal_cache_id == "signal:test-source:key-2"
+        assert fetched.seen_count == 2
 
     def test_watchlist_uniqueness_by_source_type_ticker(self, repo):
         e1 = make_watchlist_entry(source="a", signal_type="wc",

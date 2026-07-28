@@ -131,6 +131,9 @@ class WatchlistEntry(BaseModel):
 
     # Lineage
     latest_signal_cache_id: str | None = None
+    first_seen_signal_cache_id: str | None = None
+    last_seen_signal_cache_id: str | None = None
+    seen_count: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     created_by: str | None = None

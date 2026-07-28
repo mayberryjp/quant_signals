@@ -57,6 +57,9 @@ class WatchlistEntryResponse(BaseModel):
     tags: list[str]
     metadata: dict[str, Any]
     latest_signal_cache_id: str | None = None
+    first_seen_signal_cache_id: str | None = None
+    last_seen_signal_cache_id: str | None = None
+    seen_count: int = 0
     created_at: datetime
     updated_at: datetime
     created_by: str | None = None

@@ -86,3 +86,11 @@ class TestManualWatchlist:
         })
         assert resp.status_int == 200
         assert resp.json["tags"] == ["updated"]
+
+    def test_manual_add_has_null_seen_metadata(self, app_client):
+        resp = app_client.post_json("/watchlist", MANUAL_BODY)
+        assert resp.status_int == 201
+        data = resp.json
+        assert data["first_seen_signal_cache_id"] is None
+        assert data["last_seen_signal_cache_id"] is None
+        assert data["seen_count"] == 0

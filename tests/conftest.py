@@ -69,6 +69,9 @@ def make_watchlist_entry(**overrides) -> WatchlistEntry:
         status=WatchlistStatus.active,
         reason="Test reason",
         tags=["test"],
+        first_seen_signal_cache_id="signal:test-source:test-key-1",
+        last_seen_signal_cache_id="signal:test-source:test-key-1",
+        seen_count=1,
     )
     defaults.update(overrides)
     return WatchlistEntry(**defaults)

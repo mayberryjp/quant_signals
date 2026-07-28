@@ -102,6 +102,14 @@ def ingest_signal(
     weid = keys.watchlist_entry_id(submission.source, submission.signal_type, submission.ticker)
     existing_entry = repo.get_watchlist_entry_by_id(weid)
 
+    # Initialize or update seen metadata
+    if existing_entry:
+        first_seen = existing_entry.first_seen_signal_cache_id
+        seen_count = existing_entry.seen_count + 1
+    else:
+        first_seen = scid
+        seen_count = 1
+
     watchlist_entry = WatchlistEntry(
         watchlist_entry_id=weid,
         source=submission.source,
@@ -120,6 +128,9 @@ def ingest_signal(
         tags=submission.tags,
         metadata=submission.metadata,
         latest_signal_cache_id=scid,
+        first_seen_signal_cache_id=first_seen,
+        last_seen_signal_cache_id=scid,
+        seen_count=seen_count,
         created_at=existing_entry.created_at if existing_entry else now,
         updated_at=now,
         created_by=submission.source,
