@@ -7,7 +7,7 @@ import logging
 import os
 import sys
 
-from bottle import Bottle
+from bottle import Bottle, response
 
 from app.redis.client import close_redis
 from app.routes import health, signals, watchlist
@@ -23,6 +23,19 @@ logging.basicConfig(
 )
 
 app = Bottle()
+
+
+@app.hook("after_request")
+def add_cors_headers() -> None:
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+
+
+@app.route("/<path:path>", method="OPTIONS")
+def cors_preflight(path: str) -> None:
+    response.status = 204
+
 
 app.merge(health.sub)
 app.merge(signals.sub)

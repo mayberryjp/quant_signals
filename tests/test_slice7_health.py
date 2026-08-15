@@ -11,6 +11,22 @@ class TestHealth:
         assert resp.status_int == 200
         assert resp.json["status"] == "ok"
 
+    def test_health_allows_any_origin(self, app_client):
+        resp = app_client.get("/signal-cache/health", headers={"Origin": "https://example.com"})
+        assert resp.headers["Access-Control-Allow-Origin"] == "*"
+
+    def test_signal_preflight_allows_any_origin(self, app_client):
+        resp = app_client.options(
+            "/signals",
+            headers={
+                "Origin": "https://example.com",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+        assert resp.status_int == 204
+        assert resp.headers["Access-Control-Allow-Origin"] == "*"
+        assert "POST" in resp.headers["Access-Control-Allow-Methods"]
+
     def test_readiness_ok(self, app_client):
         resp = app_client.get("/signal-cache/ready")
         assert resp.status_int == 200
