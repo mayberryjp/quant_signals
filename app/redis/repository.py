@@ -122,6 +122,22 @@ class SignalCacheRepository:
         self.r.srem(keys.ACTIVE_WATCHLIST_INDEX, entry.watchlist_entry_id)
         return entry
 
+    def delete_watchlist_entry(self, entry_id: str) -> bool:
+        """Hard-delete a watchlist entry and remove it from every index."""
+        entry = self.get_watchlist_entry_by_id(entry_id)
+        if entry is None:
+            return False
+        self.r.delete(keys.watchlist_key(entry.source, entry.signal_type, entry.submitted_ticker))
+        self.r.srem(keys.ACTIVE_WATCHLIST_INDEX, entry_id)
+        self.r.srem(keys.watchlist_source_index(entry.source), entry_id)
+        self.r.srem(keys.watchlist_ticker_index(entry.submitted_ticker), entry_id)
+        self.r.srem(keys.watchlist_market_index(entry.market), entry_id)
+        self.r.srem(keys.watchlist_locale_index(entry.locale), entry_id)
+        self.r.srem(keys.watchlist_signal_type_index(entry.signal_type), entry_id)
+        for tag in entry.tags:
+            self.r.srem(keys.watchlist_tag_index(tag), entry_id)
+        return True
+
     def patch_watchlist_entry(
         self, entry_id: str, *, status: str | None = None, reason: str | None = None,
         tags: list[str] | None = None, metadata: dict[str, Any] | None = None,

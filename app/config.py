@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     source_record_ttl: int = 90 * 24 * 3600          # 90 days
     maintenance_heartbeat_ttl: int = 5 * 60          # 5 minutes
 
+    # Symbol master lookup API (GET {base}/symbols/by-ticker/{TICKER})
+    symbol_api_base_url: str = "https://signals.quant.mayberry.farm"
+    symbol_api_timeout: float = 5.0
+    symbol_api_cache_ttl: int = 300
+
     # Validation limits
     max_tags: int = 20
     max_metadata_bytes: int = 16_384

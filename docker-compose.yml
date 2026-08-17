@@ -7,6 +7,9 @@ services:
     environment:
       - DATABASE_URL=postgresql+psycopg://quant:quant_dev_password@postgres:5432/quant
       - QUANT_REDIS_URL=redis://quant_redis.quant.mayberry.farm:6379/0
+      - QUANT_SYMBOL_API_BASE_URL=https://signals.quant.mayberry.farm
+      - QUANT_SYMBOL_API_TIMEOUT=5
+      - QUANT_SYMBOL_API_CACHE_TTL=300
       - API_PORT=8016
       - MAINTENANCE_INTERVAL=60
     ports:

@@ -9,6 +9,15 @@ from webtest import TestApp
 from app.models.domain import SignalCacheRecord, SignalStatus, WatchlistEntry, WatchlistStatus
 from app.redis import client as redis_client
 from app.redis.repository import SignalCacheRepository
+from app.services.symbol_resolver import SymbolResolver, _StubBackend
+
+
+@pytest.fixture(autouse=True)
+def isolate_symbol_backend():
+    """Never let tests hit the real symbol API."""
+    SymbolResolver.set_backend(_StubBackend())
+    yield
+    SymbolResolver.set_backend(_StubBackend())
 
 
 @pytest.fixture
