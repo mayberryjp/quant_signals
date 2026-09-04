@@ -20,7 +20,7 @@ def archive_signal(engine: Engine, record: SignalCacheRecord) -> None:
     so this is safe to call on every ingest.
     """
     sql = text("""
-        INSERT INTO signal_cache.signal_archive (
+        INSERT INTO signals.signal_archive (
             signal_cache_id, source, idempotency_key,
             submitted_ticker, canonical_ticker, symbol_id,
             market, locale, signal_type,
