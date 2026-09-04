@@ -1,24 +1,31 @@
-"""0001 – Signal cache schema.
+"""0001 – Signals schema.
 
-Revision ID: 0001_signal_cache
+Creates the `signals` schema and the append-only signal_archive table. Every
+table owned by this project lives in the `signals` schema, including Alembic's
+own version table (configured in alembic/env.py as signals.alembic_version).
+
+Legacy `signal_cache` objects are migrated into `signals` by alembic/env.py
+before this runs, so the IF NOT EXISTS guards keep this a no-op on databases
+that already hold relocated data.
+
+Revision ID: 0001_signals_schema
 Create Date: 2026-06-10
 """
 
 from alembic import op
-import sqlalchemy as sa
 
-revision = "0001_signal_cache"
+revision = "0001_signals_schema"
 down_revision = None
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE SCHEMA IF NOT EXISTS signal_cache")
+    op.execute("CREATE SCHEMA IF NOT EXISTS signals")
 
     # -- signal archive (immutable, append-only) --
     op.execute("""
-        CREATE TABLE signal_cache.signal_archive (
+        CREATE TABLE IF NOT EXISTS signals.signal_archive (
             id                SERIAL PRIMARY KEY,
             signal_cache_id   TEXT NOT NULL,
             source            TEXT NOT NULL,
@@ -47,22 +54,12 @@ def upgrade() -> None:
         )
     """)
 
-    op.execute("""
-        CREATE INDEX idx_signal_archive_source ON signal_cache.signal_archive (source)
-    """)
-    op.execute("""
-        CREATE INDEX idx_signal_archive_ticker ON signal_cache.signal_archive (submitted_ticker)
-    """)
-    op.execute("""
-        CREATE INDEX idx_signal_archive_status ON signal_cache.signal_archive (status)
-    """)
-    op.execute("""
-        CREATE INDEX idx_signal_archive_received_at ON signal_cache.signal_archive (received_at)
-    """)
-    op.execute("""
-        CREATE INDEX idx_signal_archive_signal_type ON signal_cache.signal_archive (signal_type)
-    """)
+    op.execute("CREATE INDEX IF NOT EXISTS idx_signal_archive_source ON signals.signal_archive (source)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_signal_archive_ticker ON signals.signal_archive (submitted_ticker)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_signal_archive_status ON signals.signal_archive (status)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_signal_archive_received_at ON signals.signal_archive (received_at)")
+    op.execute("CREATE INDEX IF NOT EXISTS idx_signal_archive_signal_type ON signals.signal_archive (signal_type)")
 
 
 def downgrade() -> None:
-    op.execute("DROP SCHEMA IF EXISTS signal_cache CASCADE")
+    op.execute("DROP SCHEMA IF EXISTS signals CASCADE")

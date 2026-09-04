@@ -12,32 +12,52 @@ if config.config_file_name is not None:
 target_metadata = None
 
 SCHEMA = "signals"
-VERSION_TABLE = "alembic_version_signal_cache"
+VERSION_TABLE = "alembic_version"
+LEGACY_SCHEMA = "signal_cache"
+LEGACY_VERSION_TABLE = "alembic_version_signal_cache"
 
 
 def _prepare_signals_schema(connection) -> None:
-    """Ensure the signals schema exists and relocate a pre-existing alembic
-    version table into it, so Alembic reads the correct current revision
-    before running migrations."""
+    """Ensure the `signals` schema exists and migrate any legacy `signal_cache`
+    objects into it before Alembic reads its version table.
+
+    Idempotent and safe on fresh databases and on databases created by the older
+    signal_cache layout. Moving a table with ALTER TABLE ... SET SCHEMA is a
+    metadata-only operation that preserves all rows, indexes and constraints
+    (including the sequence owned by the SERIAL id column)."""
     connection.exec_driver_sql(f'CREATE SCHEMA IF NOT EXISTS "{SCHEMA}"')
+
+    # Relocate the archive table out of the legacy schema (data preserved), then
+    # drop the legacy schema only once it no longer holds the table. The second
+    # guard prevents dropping un-migrated data if both copies somehow coexist.
+    connection.exec_driver_sql(f"""
+        DO $$
+        BEGIN
+            IF to_regclass('{LEGACY_SCHEMA}.signal_archive') IS NOT NULL
+               AND to_regclass('{SCHEMA}.signal_archive') IS NULL THEN
+                ALTER TABLE {LEGACY_SCHEMA}.signal_archive SET SCHEMA "{SCHEMA}";
+            END IF;
+
+            IF to_regclass('{LEGACY_SCHEMA}.signal_archive') IS NULL THEN
+                DROP SCHEMA IF EXISTS "{LEGACY_SCHEMA}" CASCADE;
+            END IF;
+        END $$;
+    """)
+
+    # Drop the legacy version table (in whatever schema it lives) so revision
+    # tracking restarts cleanly in {SCHEMA}.{VERSION_TABLE}. Version tables hold
+    # no business data, so this is safe.
     connection.exec_driver_sql(f"""
         DO $$
         DECLARE
-            old_schema text;
+            v_schema text;
         BEGIN
-            SELECT table_schema INTO old_schema
-            FROM information_schema.tables
-            WHERE table_name = '{VERSION_TABLE}'
-              AND table_schema <> '{SCHEMA}'
-            LIMIT 1;
-
-            IF old_schema IS NOT NULL AND NOT EXISTS (
-                SELECT 1 FROM information_schema.tables
-                WHERE table_name = '{VERSION_TABLE}'
-                  AND table_schema = '{SCHEMA}'
-            ) THEN
-                EXECUTE format('ALTER TABLE %I.%I SET SCHEMA "{SCHEMA}"', old_schema, '{VERSION_TABLE}');
-            END IF;
+            FOR v_schema IN
+                SELECT table_schema FROM information_schema.tables
+                WHERE table_name = '{LEGACY_VERSION_TABLE}'
+            LOOP
+                EXECUTE format('DROP TABLE IF EXISTS %I.%I', v_schema, '{LEGACY_VERSION_TABLE}');
+            END LOOP;
         END $$;
     """)
 
