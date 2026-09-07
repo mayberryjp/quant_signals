@@ -56,7 +56,7 @@ def _prepare_signals_schema(connection) -> None:
                 SELECT table_schema FROM information_schema.tables
                 WHERE table_name = '{LEGACY_VERSION_TABLE}'
             LOOP
-                EXECUTE format('DROP TABLE IF EXISTS %I.%I', v_schema, '{LEGACY_VERSION_TABLE}');
+                EXECUTE format('DROP TABLE IF EXISTS %%I.%%I', v_schema, '{LEGACY_VERSION_TABLE}');
             END LOOP;
         END $$;
     """)
