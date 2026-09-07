@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from app.models.domain import WatchlistEntry, WatchlistStatus
 from app.models.requests import ManualWatchlistAdd
@@ -15,7 +15,7 @@ def manual_add(
     body: ManualWatchlistAdd,
     repo: SignalCacheRepository,
 ) -> WatchlistEntry:
-    now = datetime.now(timezone.utc)
+    now = datetime.now().astimezone()
     signal_type = "manual"
 
     resolved = SymbolResolver.resolve(body.ticker, body.market, body.locale)

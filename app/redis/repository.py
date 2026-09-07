@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 import redis as redis_lib
@@ -113,7 +113,7 @@ class SignalCacheRepository:
         if entry is None:
             return None
         entry.status = WatchlistStatus.inactive
-        entry.updated_at = datetime.now(timezone.utc)
+        entry.updated_at = datetime.now().astimezone()
         if reason:
             entry.reason = reason
         key = keys.watchlist_key(entry.source, entry.signal_type, entry.submitted_ticker)
@@ -153,7 +153,7 @@ class SignalCacheRepository:
             entry.tags = tags
         if metadata is not None:
             entry.metadata = metadata
-        entry.updated_at = datetime.now(timezone.utc)
+        entry.updated_at = datetime.now().astimezone()
         key = keys.watchlist_key(entry.source, entry.signal_type, entry.submitted_ticker)
         self.r.set(key, entry.model_dump_json(), ex=settings.watchlist_entry_ttl)
         self._update_watchlist_indexes(entry)
@@ -270,7 +270,7 @@ class SignalCacheRepository:
     # ------------------------------------------------------------------
 
     def set_heartbeat(self) -> None:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now().astimezone().isoformat()
         self.r.set(keys.MAINTENANCE_HEARTBEAT, now, ex=settings.maintenance_heartbeat_ttl)
         self.r.set(keys.MAINTENANCE_LAST_CLEANUP, now)
 
@@ -284,6 +284,6 @@ class SignalCacheRepository:
         """Remove entries from the recent-signals sorted set older than max_age."""
         if max_age_seconds is None:
             max_age_seconds = settings.signal_record_ttl
-        cutoff = datetime.now(timezone.utc).timestamp() - max_age_seconds
+        cutoff = datetime.now().astimezone().timestamp() - max_age_seconds
         removed: int = self.r.zremrangebyscore(keys.RECENT_SIGNALS_INDEX, "-inf", cutoff)
         return removed

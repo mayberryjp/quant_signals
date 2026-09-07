@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 
 from app.models.domain import (
     IdempotencyRecord,
@@ -27,7 +27,7 @@ def ingest_signal(
     repo: SignalCacheRepository,
 ) -> tuple[SignalCacheRecord, WatchlistEntry | None]:
     """Process a signal submission: validate, dedup, resolve, persist."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now().astimezone()
 
     # 1. Idempotency check
     existing = repo.check_idempotency(submission.source, submission.idempotency_key)

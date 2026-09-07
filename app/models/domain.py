@@ -8,7 +8,7 @@ straight ``model.model_dump(mode="json")`` call.
 from __future__ import annotations
 
 import enum
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -49,8 +49,8 @@ class SignalSource(BaseModel):
     name: str
     source_type: str = "strategy"
     enabled: bool = True
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
+    updated_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
     schema_version: int = 1
 
 
@@ -82,7 +82,7 @@ class SignalCacheRecord(BaseModel):
     rejection_reason: str | None = None
 
     # Timestamps
-    received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    received_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
     processed_at: datetime | None = None
 
     # Linked watchlist entry
@@ -101,7 +101,7 @@ class IdempotencyRecord(BaseModel):
     source: str
     signal_cache_id: str
     status: SignalStatus
-    received_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    received_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
     schema_version: int = 1
 
 
@@ -134,8 +134,8 @@ class WatchlistEntry(BaseModel):
     first_seen_signal_cache_id: str | None = None
     last_seen_signal_cache_id: str | None = None
     seen_count: int = 0
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
+    updated_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
     created_by: str | None = None
 
     schema_version: int = 1
